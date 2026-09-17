@@ -1,0 +1,61 @@
+{
+  "slug": "protean-sym2p",
+  "version": "1.0.0",
+  "contract": "SYM-2P: a compact versioned agentic message language - one canonical JSON packet per line over durable text artifacts - with validator, enums, and fixtures.",
+  "kind": "skills",
+  "entrypoint": "install.sh",
+  "payload": [
+    "SPEC.md",
+    "skills/sym2p",
+    "scripts/protean-sym2p",
+    "templates/protean-sym2p",
+    "examples/protean-sym2p",
+    "AUDIT/protean-sym2p",
+    "gates/protean-sym2p"
+  ],
+  "installTargets": [
+    "SPEC.md",
+    "skills/sym2p",
+    "scripts/protean-sym2p",
+    "templates/protean-sym2p",
+    "examples/protean-sym2p",
+    "AUDIT/protean-sym2p",
+    "gates/protean-sym2p"
+  ],
+  "gates": [
+    {
+      "name": "internal-names",
+      "cwd": ".",
+      "postInstall": true,
+      "cmd": "python3 gates/protean-sym2p/check-internal-names.py ."
+    },
+    {
+      "name": "sym2p-suite",
+      "cwd": ".",
+      "postInstall": false,
+      "cmd": "python3 tests/run-tests.py"
+    }
+  ],
+  "requires": [],
+  "recommends": [
+    "protean-ops"
+  ],
+  "runtime": {
+    "python": ">=3.9",
+    "bin": [
+      "git"
+    ]
+  },
+  "license": "MIT",
+  "open": [
+    "O-1",
+    "O-2",
+    "O-3",
+    "O-4",
+    "O-5",
+    "O-6",
+    "O-7",
+    "O-8",
+    "O-9"
+  ]
+}
