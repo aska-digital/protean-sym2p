@@ -6,6 +6,19 @@ The protocol ingredient of the Protean Kit distribution. It carries the
 normative specification, the stdlib validator, the packet templates, the worked
 example, and the fixture suite.
 
+## Do you need this?
+
+ROLE: The protocol ingredient of the Protean Kit distribution. It carries the normative SYM-2P specification, the stdlib validator, packet templates, a worked example, and the fixture suite.
+
+USE WHEN:
+- Two agents must pass messages as one canonical JSON packet per line inside durable text artifacts, per `SPEC.md` section 1.
+- A receiver must validate a packet stream, optionally against receiver state or strict canonical form, and get typed diagnostics with exit codes 0 valid, 1 invalid, 2 usage or IO error.
+- A run needs the routing-state rows checked. Install `protean-ops` alongside, which this manifest recommends.
+
+SKIP WHEN:
+- The run depends on open items O-1 to O-9. `SPEC.md` section 10 and this README state they remain open and undecided.
+- Only record schemas and gates are needed. Those ship in `protean-ops`, not here.
+
 ## What it installs and where
 
 | Path | Contents |
