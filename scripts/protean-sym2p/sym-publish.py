@@ -293,6 +293,12 @@ def scan_versions(objects_dir, obj_id, findings):
     bare_re = re.compile(r"^%s\.md$" % re.escape(obj_id))
     ver_re = re.compile(r"^%s\.v([1-9][0-9]*)\.md$" % re.escape(obj_id))
     seen = {}
+    if not os.path.isdir(objects_dir):
+        # An absent store is empty, not a read failure: nothing has been
+        # published yet, which is the state of every first use and the state
+        # --dry-run reaches without creating the directory. A directory that
+        # exists but cannot be listed is still a finding, below.
+        return {}
     try:
         names = sorted(os.listdir(objects_dir))
     except OSError as exc:
@@ -511,16 +517,13 @@ def main(argv=None):
         return emit(findings, args.as_json)
 
     obj_id = obj["id"]
-    if not os.path.isdir(objects_dir):
-        if args.dry_run:
-            pass
-        else:
-            try:
-                os.makedirs(objects_dir)
-            except OSError as exc:
-                sys.stderr.write("sym-publish.py: cannot create %s: %s\n"
-                                 % (objects_dir, exc))
-                return EXIT_USAGE
+    if not os.path.isdir(objects_dir) and not args.dry_run:
+        try:
+            os.makedirs(objects_dir)
+        except OSError as exc:
+            sys.stderr.write("sym-publish.py: cannot create %s: %s\n"
+                             % (objects_dir, exc))
+            return EXIT_USAGE
 
     present = scan_versions(objects_dir, obj_id, findings)
     if present is None:

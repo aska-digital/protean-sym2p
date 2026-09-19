@@ -16,9 +16,18 @@ entry per release: what changed, why, and how it was verified.
 - **Why:** M-5 states that "the tooling refuses to rewrite a published file", and
   append-only versioning (L-14) was convention plus install docs: nothing
   enforced it on the write path, so `sym-validate.py` checked object shape only.
-- **Verification:** `python3 tests/run-tests.py` — 74/74 cases (34 validator, 40
+- **Fix:** `--dry-run` exited 1 on a fresh delegation root. It skipped creating
+  `<root>/objects/` (correct) and then listed that directory anyway, so the
+  documented first-use check failed with a spurious `ERR:SYN` while the same
+  command without `--dry-run` succeeded. An absent store is now scanned as
+  empty; a store that exists but cannot be listed is still a finding. The
+  suite's `--dry-run` case reused a root an earlier case had already populated,
+  so it never reached this path: `tests/run-tests.py` gains a first-use section
+  that builds its own root with no `objects/` store.
+- **Verification:** `python3 tests/run-tests.py` — 80/80 cases (34 validator, 46
   publisher) with every published file independently hash-verified under
-  `--verify-hashes`;
+  `--verify-hashes`; the five first-use cases fail against the pre-fix publisher
+  with the defect's own `ERR:SYN` diagnostic. Also
   `python3 gates/protean-sym2p/check-internal-names.py .` clean;
   `python3 -m unittest discover -s tests` OK. Full output in the pull request.
 - **Hash scope:** the publisher writes the documented body-scope hash (sha256

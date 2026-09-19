@@ -173,6 +173,11 @@ refused with a typed diagnostic, `2` usage or IO error. Typed codes: `ERR:SYN`
   `deps`) sit outside the hash by design, so the publisher's own `v`, `sup`, and
   `by` checks are what protect the header at write time; run
   `--verify-hashes` on the published file for the body.
+- **`--dry-run` writes nothing, including the store.** It prints the resolved
+  ref, target, and hash and creates no `<root>/objects/` directory, so it is safe
+  on a root that has never published anything — which is the check it exists
+  for. An absent store reads as empty; a store that exists but cannot be listed
+  is still a refusal.
 - **Output is canonical compact JSON, key-sorted** — the publisher normalizes
   whatever the caller emits, which is where canonicalize-before-send belongs:
   `--strict-canonical` stops being a trap for nondeterministic emitters.

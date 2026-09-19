@@ -140,6 +140,20 @@ def sandbox(name):
     return root, deleg
 
 
+def fresh_root(name):
+    """A delegation root in the state of every first use: no objects/ store.
+
+    ``sandbox`` pre-creates objects/ so most cases can publish immediately --
+    which also means a case that reuses one can never reach the fresh-root
+    path. These cases build their own root and deliberately do not create the
+    store, because a --dry-run must never create it either.
+    """
+    root = os.path.join(PUB_TMP, name)
+    deleg = os.path.join(root, "deleg")
+    os.makedirs(deleg)
+    return root, deleg
+
+
 def write_json(path, obj):
     with open(path, "w") as fh:
         json.dump(obj, fh)
@@ -393,6 +407,45 @@ def run_publish_cases():
     check("usage/IO failures exit 2 (missing --to, missing root, unreadable input)",
           (rc1, rc2, rc3) == (2, 2, 2),
           " ".join([out1.strip()[:40], out2.strip()[:40], out3.strip()[:40]]))
+
+    # -- 8. first use: a fresh root with no objects/ store --------------------
+    # The documented first-use path, and the one --dry-run exists to check.
+    # Section 7 reuses a sandbox whose objects/ an earlier case already
+    # populated, so a dry-run there never reaches this state; these cases
+    # build their own root with no store.
+    root11, deleg11 = fresh_root("freshroot")
+    objects11 = os.path.join(deleg11, "objects")
+    fresh_input = write_json(os.path.join(PUB_TMP, "fresh.json"), draft(id="e9"))
+
+    rc, out = run(["--root", deleg11, "--by", "research", "--dry-run",
+                   fresh_input], PUBLISH)
+    check("--dry-run on a fresh root exits 0 and plans v1",
+          rc == 0 and "dry-run, no files written" in out and "ref: e9:v1" in out,
+          "exit=%d %s" % (rc, out.strip()[:160]))
+    present_11 = sorted(os.listdir(objects11)) if os.path.isdir(objects11) else None
+    check("--dry-run on a fresh root creates no store and writes nothing",
+          present_11 is None,
+          "objects/ created with %s" % present_11)
+
+    rc, out = run(["--root", deleg11, "--by", "research", "--dry-run", "--announce",
+                   "--to", "relay", fresh_input], PUBLISH)
+    check("--dry-run on a fresh root still emits the announce plan",
+          rc == 0 and "announce: " in out and "dry-run, no files written" in out,
+          "exit=%d %s" % (rc, out.strip()[:160]))
+
+    rc, out = run(["--root", deleg11, "--by", "research",
+                   "--at", "2026-09-19T16:00:00Z", fresh_input], PUBLISH)
+    e9 = os.path.join(objects11, "e9.md")
+    check("the same fresh root then publishes for real",
+          rc == 0 and os.path.isfile(e9), "exit=%d %s" % (rc, out.strip()[:160]))
+    if os.path.isfile(e9):
+        ok, detail = validates(e9)
+        check("the first-use publication validates (--verify-hashes)", ok, detail)
+        rc, out = run(["--root", deleg11, "--by", "research", "--dry-run",
+                       write_json(os.path.join(PUB_TMP, "fresh2.json"), draft(id="e9"))], PUBLISH)
+        check("--dry-run on a populated root is a planned no-op, not a write",
+              rc == 0 and ("already published" in out or "v2" in out),
+              "exit=%d %s" % (rc, out.strip()[:160]))
 
     passed = sum(1 for _n, ok, _d in checks if ok)
     failures = [n for n, ok, _d in checks if not ok]
