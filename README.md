@@ -25,7 +25,7 @@ SKIP WHEN:
 |---|---|
 | `SPEC.md` | the normative specification |
 | `skills/sym2p/` | the usage skill |
-| `scripts/protean-sym2p/` | `sym-validate.py`, stdlib only |
+| `scripts/protean-sym2p/` | `sym-validate.py` and `sym-publish.py`, stdlib only |
 | `templates/protean-sym2p/` | canonical brief and receipt packets |
 | `examples/protean-sym2p/` | the worked review, fix, verify, merge loop |
 | `AUDIT/protean-sym2p/` | evidence and provenance (never normative) |
@@ -52,10 +52,12 @@ The recommendation is documentary and never affects install order.
 
 ## Status: specified and built, with open items
 
-`SPEC.md` defines the protocol. The validator, the templates, the worked example,
-and the fixture suite ship with this repository and are exercised by its gates.
-The validator implements the operational subset the specification names, and it
-rejects against the full enums.
+`SPEC.md` defines the protocol. The validator, the write-once object publisher,
+the templates, the worked example, and the fixture suite ship with this
+repository and are exercised by its gates. The validator implements the
+operational subset the specification names, and it rejects against the full
+enums. The publisher writes the append-only object versions the validator then
+checks.
 
 Open items O-1 to O-9 remain open and are carried in `SPEC.md` section 10. No open
 item is closed by this repository, and none is presented as decided.
@@ -67,6 +69,9 @@ python3 scripts/protean-sym2p/sym-validate.py --help
 python3 scripts/protean-sym2p/sym-validate.py <packet-or-stream>
 python3 scripts/protean-sym2p/sym-validate.py --state <receiver-state.json> <packets.jsonl>
 python3 scripts/protean-sym2p/sym-validate.py --strict-canonical <packets.jsonl>
+python3 scripts/protean-sym2p/sym-validate.py --verify-hashes --kind object <root>/objects/<id>.v2.md
+python3 scripts/protean-sym2p/sym-publish.py --root <delegation-dir> --by <role-id> draft.json
+python3 scripts/protean-sym2p/sym-publish.py --root <dir> --by <role-id> --announce --to <recipient> draft.json
 python3 tests/run-tests.py
 ```
 
@@ -82,7 +87,8 @@ line: that is the wire carrier.
 | protocol suite | `python3 tests/run-tests.py` |
 
 The suite gives every valid fixture a pass and every malformed, stale, duplicate,
-or protected-semantic fixture a typed rejection.
+or protected-semantic fixture a typed rejection, and exercises the publisher's
+append-only write path end to end.
 
 ## Offline and cache behaviour
 
