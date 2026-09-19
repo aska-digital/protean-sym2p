@@ -336,7 +336,7 @@ them.
 | O-6 | **Dispute and decision home, and closing authority.** Which surface holds dispute and decision objects, and who may close a dispute: the coordinator alone, or the stage owner whose domain is disputed. | Interim per L-19: the stage owner may close a dispute inside their domain. The coordinator may close it otherwise, and must record the adjudicator and the remaining uncertainty. |
 | O-7 | **Minor-version convention.** Whether a profile minoring scheme is needed now, beyond `ext.sym2p.rev`. | Interim: L-1 and L-2 apply, `v` stays `2`, profile revisions that add no required field are legal, and a receiver may accept them only while all unknown extensions are optional. |
 | O-8 | **Fallback logging surface.** Who logs each downgrade, and where the metric lives. | Interim: the fallback event is a routing-state row, and a QA verdict must report fallback and parse rates. |
-| O-9 | **Group addressing.** The field rules allow one recipient or a declared group, while the schema fixes `t` to one id ref. | Locked for 1.0 as single-recipient (L-6): a group send is N packets plus one routing-state row naming the set. Reopens only with a version increment. |
+| O-9 | **Group addressing.** The schema fixes `t` to one id ref. | Locked for 1.0 as single-recipient (L-6): a group send is N packets plus one routing-state row naming the set. Reopens only with a version increment. |
 
 ## 11. Acceptance criteria
 
