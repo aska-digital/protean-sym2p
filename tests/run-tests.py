@@ -33,6 +33,7 @@ CASES = [
     ("valid packet-assert", [V("packet-assert.json")], 0, None),
     ("valid packet-error-ver", [V("packet-error-ver.json")], 0, None),
     ("valid object-dispute-open", [V("object-dispute-open.json")], 0, None),
+    ("object hash verifies", ["--verify-hashes", V("object-dispute-open.json")], 0, None),
     ("base matches receiver state", ["--state", STATE, V("packet-update-current.json")], 0, None),
 
     # ---- invalid: must exit non-zero with a typed diagnostic ----
@@ -57,6 +58,11 @@ CASES = [
     ("duplicate (f,id)", [I("duplicate-packet.jsonl")], 1, "ERR:DUP"),
     ("non-canonical serialization", ["--strict-canonical",
                                      I("noncanonical-whitespace.jsonl")], 1, "ERR:SYN"),
+    ("tampered body, well-formed hash rejected", ["--verify-hashes",
+                                                  I("object-hash-mismatch.json")], 1, "ERR:SYN"),
+    # ---- the flag is opt-in: without it a stale-but-well-formed hash passes ----
+    ("hash mismatch passes without the flag (opt-in)",
+     [I("object-hash-mismatch.json")], 0, None),
     # ---- duplicate downgraded to a warning when explicitly allowed ----
     ("duplicate allowed -> warning only", ["--allow-duplicates",
                                            I("duplicate-packet.jsonl")], 0, "ERR:DUP"),

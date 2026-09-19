@@ -28,6 +28,7 @@ does not already state.
     python3 scripts/protean-sym2p/sym-validate.py --now 2026-09-17T03:00:00Z packet.json
     python3 scripts/protean-sym2p/sym-validate.py --strict-canonical packets.jsonl
     python3 scripts/protean-sym2p/sym-validate.py --canonicalize packets.jsonl
+    python3 scripts/protean-sym2p/sym-validate.py --verify-hashes --kind object objects.jsonl
     python3 tests/run-tests.py                              # focused suite
 
 Exit codes: `0` every document valid · `1` at least one invalid (typed
@@ -90,6 +91,20 @@ partially applies, and never falls back to a lenient interpretation.
 | `--require-refs` and an `ev`/`ce`/`s` ref is unknown | `ERR:REF` |
 | multi-recipient `t` | `ERR:POL` |
 | duplicate `(f,id)` in this run | `ERR:DUP` |
+| object content does not match its declared sha256 (with `--verify-hashes`) | `ERR:SYN` on `hash` |
+
+### Hash verification (opt-in)
+
+`hash` was previously format-checked only. With `--verify-hashes`, the
+validator recomputes the content hash and fails closed on mismatch.
+
+Proposed canonicalization (under review for SPEC L-15, not yet normative):
+the hash covers the whole object document with the `hash` field itself
+removed, serialized as compact JSON (separators `,` and `:`), keys sorted
+(objects carry no mandated key order, unlike packets), UTF-8 encoded. The
+flag is opt-in because existing fixtures carry placeholder hashes; the test
+suite pins both behaviors (mismatch rejected with the flag, format-only
+without it).
 
 ### About `ERR:DUP`
 
