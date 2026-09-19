@@ -112,9 +112,13 @@ def canon_bytes(obj):
 
 
 def expected_hash(obj):
-    """The content hash, recomputed here independently of both tools."""
-    body = dict((k, v) for k, v in obj.items() if k != "hash")
-    return "sha256:" + hashlib.sha256(canon_bytes(body)).hexdigest()
+    """The content hash, recomputed here independently of both tools.
+
+    Documented rule (AUDIT/protean-sym2p/provenance.md): sha256 over the
+    canonical compact ``body`` with sorted keys. Header fields sit outside the
+    hash by design.
+    """
+    return "sha256:" + hashlib.sha256(canon_bytes(obj["body"])).hexdigest()
 
 
 def draft(**over):
@@ -324,6 +328,29 @@ def run_publish_cases():
     rc, out = run(["--root", deleg8, "--by", "research", truncated], PUBLISH)
     check("malformed input JSON is refused (ERR:SYN)",
           rc == 1 and "ERR:SYN" in out, out.strip()[:160])
+
+    # -- 6b. hash scope, and a caller-computed hash ---------------------------
+    root10, deleg10 = sandbox("hashscope")
+    supplied_body = draft(id="e8")
+    supplied = dict(supplied_body, hash=expected_hash(supplied_body))
+    rc, out = publish_ok("supplied", deleg10, supplied, ["--at", "2026-09-19T16:00:00Z"])
+    e8 = os.path.join(deleg10, "objects", "e8.md")
+    check("a caller-supplied correct body hash survives publication",
+          rc == 0 and os.path.isfile(e8) and read_json(e8).get("hash") == supplied["hash"],
+          out.strip()[:120])
+    if os.path.isfile(e8):
+        ok, detail = validates(e8)
+        check("the supplied-hash publication verifies (--verify-hashes)", ok, detail)
+        # The documented rule hashes the body, so header fields are outside it.
+        # Pinned deliberately: a future hash-scope change must fail loudly here.
+        edited = read_json(e8)
+        edited["ttl"] = "project"
+        with open(e8, "w") as fh:
+            fh.write(json.dumps(edited, sort_keys=True, separators=(",", ":"),
+                                ensure_ascii=False) + "\n")
+        rc, out = run(["--verify-hashes", "--kind", "object", e8])
+        check("hash scope is the body: a header edit still verifies (pinned)", rc == 0,
+              out.strip()[:120])
 
     # -- 7. normalization and inputs -----------------------------------------
     root9, deleg9 = sandbox("normalize")

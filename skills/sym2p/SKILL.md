@@ -165,10 +165,14 @@ refused with a typed diagnostic, `2` usage or IO error. Typed codes: `ERR:SYN`
   existing published file cannot be overwritten even by a concurrent writer;
   `--version N` lets a caller pin the target, and a version already published
   with different content is refused.
-- **The content hash is the one `--verify-hashes` recomputes** (compact JSON,
-  sorted keys, UTF-8, `hash` field excluded), so a published file verifies
-  against the shipped validator. A declared hash is verified against the
-  document as given and never silently recomputed.
+- **The content hash is the one `--verify-hashes` recomputes** — sha256 over the
+  canonical compact `body`, sorted keys, UTF-8, the documented rule. A declared
+  hash is verified against the document as given and never silently recomputed,
+  and because the hash covers the body, a caller-computed correct hash survives
+  publication unchanged. Header fields (`v`, `by`, `at`, `ttl`, `acl`, `sup`,
+  `deps`) sit outside the hash by design, so the publisher's own `v`, `sup`, and
+  `by` checks are what protect the header at write time; run
+  `--verify-hashes` on the published file for the body.
 - **Output is canonical compact JSON, key-sorted** — the publisher normalizes
   whatever the caller emits, which is where canonicalize-before-send belongs:
   `--strict-canonical` stops being a trap for nondeterministic emitters.

@@ -8,10 +8,13 @@ to refuse to rewrite a published file (L-14). ``sym-validate.py`` checks object
 shape on the read path; this script is the write path. It is the producer half of
 the same contract, so it shares the validator's conventions:
 
-  * canonical content hash  - sha256 over the object document with the ``hash``
-    field removed, serialized as compact JSON (separators ``","`` / ``":"``),
-    keys sorted, UTF-8 encoded. This is the canonicalization ``--verify-hashes``
-    recomputes, so a published file verifies against the shipped validator.
+  * canonical content hash  - sha256 over the object's canonical compact
+    ``body`` with sorted keys (separators ``","`` / ``":"``), UTF-8 encoded.
+    This is the documented rule (AUDIT/protean-sym2p/provenance.md) and the one
+    ``--verify-hashes`` recomputes, so a published file verifies against the
+    shipped validator. Header fields (``v``, ``by``, ``at``, ``ttl``, ``acl``,
+    ``sup``, ``deps``) sit outside the hash by design, which is why the
+    publisher enforces the header itself at write time.
   * canonical serialization - compact UTF-8 JSON, no insignificant whitespace,
     absent optionals omitted, never ``null`` (M-2 / L-3). Object documents carry
     no mandated key order, so the written form is key-sorted and byte-stable.
@@ -157,9 +160,16 @@ def canonical_bytes(obj):
 
 
 def content_hash(obj):
-    """``sha256:<hex>`` over the canonical form with ``hash`` excluded."""
-    body = {k: v for k, v in obj.items() if k != "hash"}
-    return "sha256:" + hashlib.sha256(canonical_bytes(body)).hexdigest()
+    """``sha256:<hex>`` — the documented content-hash rule.
+
+    sha256 over the object's canonical compact ``body`` with sorted keys
+    (AUDIT/protean-sym2p/provenance.md), which is the rule sym-validate.py
+    recomputes under ``--verify-hashes``. Header fields (``v``, ``by``, ``at``,
+    ``ttl``, ``acl``, ``sup``, ``deps``) sit outside the hash by design, so the
+    publisher's own version, lineage, and authorship checks are what protect the
+    header at write time.
+    """
+    return "sha256:" + hashlib.sha256(canonical_bytes(obj["body"])).hexdigest()
 
 
 def fingerprint(obj):
@@ -233,15 +243,17 @@ def check_input(obj, findings, by):
         declared = obj["hash"]
         if not isinstance(declared, str) or not HASH_RE.match(declared):
             findings.append(E("ERR:SYN", "hash", "must be 'sha256:<64 hex>': %r" % (declared,)))
+        elif not isinstance(obj.get("body"), dict):
+            pass  # the body finding above covers it; there is nothing to hash
         else:
             recomputed = content_hash(obj)
             if recomputed != declared:
                 findings.append(E(
                     "ERR:SYN", "hash",
                     "declared hash does not match the canonical content: declared %s "
-                    "but the document hashes to %s (canonical form: compact JSON, "
-                    "sorted keys, UTF-8, hash field excluded); omit 'hash' to have "
-                    "the publisher compute it" % (declared[:23], recomputed[:23])))
+                    "but the body hashes to %s (canonical form: compact JSON body, "
+                    "sorted keys, UTF-8); omit 'hash' to have the publisher compute it"
+                    % (declared[:23], recomputed[:23])))
     # Authorship: the object's declared author must be the publisher (L-7).
     if "by" in obj and obj["by"] != by:
         findings.append(E("ERR:AUTH", "by",

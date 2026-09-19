@@ -16,10 +16,18 @@ entry per release: what changed, why, and how it was verified.
 - **Why:** M-5 states that "the tooling refuses to rewrite a published file", and
   append-only versioning (L-14) was convention plus install docs: nothing
   enforced it on the write path, so `sym-validate.py` checked object shape only.
-- **Verification:** `python3 tests/run-tests.py` — 70/70 cases (33 validator, 37
-  publisher) with every published file independently hash-verified;
+- **Verification:** `python3 tests/run-tests.py` — 74/74 cases (34 validator, 40
+  publisher) with every published file independently hash-verified under
+  `--verify-hashes`;
   `python3 gates/protean-sym2p/check-internal-names.py .` clean;
   `python3 -m unittest discover -s tests` OK. Full output in the pull request.
+- **Hash scope:** the publisher writes the documented body-scope hash (sha256
+  over the canonical compact `body`, the rule in
+  `AUDIT/protean-sym2p/provenance.md` that `--verify-hashes` enforces), so a
+  published file verifies against the shipped validator. Because the hash covers
+  the body, a caller-computed correct hash survives publication unchanged; header
+  fields stay outside the hash by design, which is why the publisher enforces
+  `v`, `sup`, and `by` itself at write time. The suite pins that scope.
 - **Contract:** unchanged. No wire bytes, no enum, no key order, no gate, no
   install target, and no manifest entry changed; `scripts/protean-sym2p/` was
   already a declared payload path, and adding an optional file to it is a
