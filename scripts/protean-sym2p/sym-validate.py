@@ -30,13 +30,18 @@ Exit codes
 
 Hash verification (--verify-hashes, objects only)
 ------------------------------------------------
-Proposed canonicalization for SPEC L-15 (not yet normative; this flag documents
-the proposal for review): the hash covers the whole object document with the
-``hash`` field itself removed, serialized as compact JSON (separators "," and
-":"), keys sorted (objects carry no mandated key order, unlike packets), UTF-8
-encoded with ensure_ascii=False. A mismatch fails closed with ERR:SYN on the
-``hash`` field. Off by default because existing fixtures carry placeholder
-hashes; the test suite pins the opt-in behavior explicitly.
+Enforces the documented content-hash rule (AUDIT/protean-sym2p/provenance.md):
+the hash is sha256 over the canonical compact ``body`` with sorted keys
+(separators "," and ":", UTF-8, ensure_ascii=False). A mismatch fails closed
+with ERR:SYN on the ``hash`` field. Note the header fields (``v``, ``by``,
+``at``, ``ttl``, ``acl``, ``sup``, ``deps``) sit outside the hash by design;
+widening the scope is a versioned protocol decision, not part of this flag.
+Off by default: enforcing content-hash integrity is a receiver-side policy
+choice (a deployment may accept objects hashed under a different scope, or
+defer the recomputation cost). The test suite pins both behaviors explicitly,
+including a --verify-hashes run over the worked example so a future
+hash-scope change fails loudly instead of silently. The flag is a no-op for
+packets and for --canonicalize runs.
 """
 
 from __future__ import annotations
@@ -221,23 +226,21 @@ def check_iso_z(v, field, findings):
             return None
 
 
-def canonical_object_bytes(obj):
+def canonical_body_bytes(obj):
     """Bytes over which an object content hash is computed.
 
-    Proposed rule for SPEC L-15 (see module docstring): the hash covers the
-    whole object document with the ``hash`` field itself removed, serialized
-    as compact JSON with keys sorted, UTF-8 encoded. Sorted keys are required
-    because objects carry no mandated key order (unlike packets, which have a
-    fixed canonical order).
+    The documented rule (AUDIT/protean-sym2p/provenance.md): sha256 over the
+    canonical compact ``body`` with sorted keys. Sorted keys are used because
+    objects carry no mandated key order (unlike packets, which have a fixed
+    canonical order).
     """
-    body = {k: v for k, v in obj.items() if k != "hash"}
-    return json.dumps(body, sort_keys=True, separators=(",", ":"),
+    return json.dumps(obj["body"], sort_keys=True, separators=(",", ":"),
                       ensure_ascii=False).encode("utf-8")
 
 
 def object_hash(obj):
     """The ``sha256:<hex>`` value ``--verify-hashes`` expects."""
-    return "sha256:" + hashlib.sha256(canonical_object_bytes(obj)).hexdigest()
+    return "sha256:" + hashlib.sha256(canonical_body_bytes(obj)).hexdigest()
 
 
 def check_ops(v, findings):
@@ -479,13 +482,13 @@ def validate_object(obj, findings):
         findings.append(E("ERR:SYN", "v", "object version must be an integer >= 1"))
     if not isinstance(obj.get("hash"), str) or not HASH_RE.match(obj.get("hash", "")):
         findings.append(E("ERR:SYN", "hash", "must be 'sha256:<64 hex>' (canonical content hash)"))
-    elif VERIFY_HASHES:
+    elif VERIFY_HASHES and isinstance(obj.get("body"), dict):
         recomputed = object_hash(obj)
         if recomputed != obj["hash"]:
             findings.append(E("ERR:SYN", "hash",
-                              "content hash mismatch: declared %s but canonical content "
-                              "hashes to %s (canonical form: compact JSON, sorted keys, "
-                              "UTF-8, hash field excluded)"
+                              "content hash mismatch: declared %s but canonical body "
+                              "hashes to %s (canonical form: compact JSON body, sorted "
+                              "keys, UTF-8)"
                               % (obj["hash"][:23], recomputed[:23])))
     if obj.get("ttl") not in TTL_CLASSES:
         findings.append(E("ERR:SYN", "ttl", "unknown retention class %r (allowed: %s)"
@@ -789,9 +792,10 @@ def main(argv=None):
                         help="require compact canonical serialization (no insignificant "
                              "whitespace)")
     parser.add_argument("--verify-hashes", action="store_true",
-                        help="for objects: recompute the sha256 content hash and reject "
-                             "on mismatch (opt-in; proposes the SPEC L-15 "
-                             "canonicalization, see module docstring)")
+                        help="for objects: recompute the sha256 body hash and reject "
+                             "on mismatch (opt-in; enforces the documented body-hash "
+                             "rule, see module docstring; no-op for packets and "
+                             "--canonicalize runs)")
     parser.add_argument("--canonicalize", action="store_true",
                         help="print the canonical compact form of each document and exit")
     parser.add_argument("--json", action="store_true", dest="as_json",

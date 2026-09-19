@@ -92,20 +92,20 @@ partially applies, and never falls back to a lenient interpretation.
 | `--require-refs` and an `ev`/`ce`/`s` ref is unknown | `ERR:REF` |
 | multi-recipient `t` | `ERR:POL` |
 | duplicate `(f,id)` in this run | `ERR:DUP` |
-| object content does not match its declared sha256 (with `--verify-hashes`) | `ERR:SYN` on `hash` |
+| object body hash mismatch (with `--verify-hashes`) | `ERR:SYN` on `hash` |
 
 ### Hash verification (opt-in)
 
 `hash` was previously format-checked only. With `--verify-hashes`, the
-validator recomputes the content hash and fails closed on mismatch.
-
-Proposed canonicalization (under review for SPEC L-15, not yet normative):
-the hash covers the whole object document with the `hash` field itself
-removed, serialized as compact JSON (separators `,` and `:`), keys sorted
-(objects carry no mandated key order, unlike packets), UTF-8 encoded. The
-flag is opt-in because existing fixtures carry placeholder hashes; the test
-suite pins both behaviors (mismatch rejected with the flag, format-only
-without it).
+validator recomputes the hash and fails closed on mismatch, enforcing the
+documented rule (AUDIT/protean-sym2p/provenance.md): sha256 over the canonical
+compact `body` with sorted keys. Header fields (`v`, `by`, `at`, `ttl`,
+`acl`, `sup`, `deps`) sit outside the hash by design. The flag is opt-in —
+enforcing content-hash integrity is a receiver-side policy choice — and is a
+no-op for packets and `--canonicalize` runs. The test suite pins both
+behaviors (mismatch rejected with the flag, format-only without it), including
+a `--verify-hashes` run over the worked example so a future hash-scope change
+fails loudly instead of silently.
 
 ### About `ERR:DUP`
 

@@ -46,6 +46,7 @@ CASES = [
     ("template/receipt-packet.json", [os.path.join(ROOT, "templates", "protean-sym2p", "receipt-packet.json")], 0, None),
     ("worked example (auto)", [EXAMPLE], 0, None),
     ("worked example (strict canonical)", ["--strict-canonical", EXAMPLE], 0, None),
+    ("worked example verifies hashes", ["--verify-hashes", EXAMPLE], 0, None),
     ("valid packet-assert", [V("packet-assert.json")], 0, None),
     ("valid packet-error-ver", [V("packet-error-ver.json")], 0, None),
     ("valid object-dispute-open", [V("object-dispute-open.json")], 0, None),
