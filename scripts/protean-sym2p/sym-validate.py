@@ -27,12 +27,28 @@ Exit codes
   0  every document valid
   1  at least one document invalid (typed diagnostics printed)
   2  usage / IO / configuration error (missing file, bad --state, ...)
+
+Hash verification (--verify-hashes, objects only)
+------------------------------------------------
+Enforces the documented content-hash rule (AUDIT/protean-sym2p/provenance.md):
+the hash is sha256 over the canonical compact ``body`` with sorted keys
+(separators "," and ":", UTF-8, ensure_ascii=False). A mismatch fails closed
+with ERR:SYN on the ``hash`` field. Note the header fields (``v``, ``by``,
+``at``, ``ttl``, ``acl``, ``sup``, ``deps``) sit outside the hash by design;
+widening the scope is a versioned protocol decision, not part of this flag.
+Off by default: enforcing content-hash integrity is a receiver-side policy
+choice (a deployment may accept objects hashed under a different scope, or
+defer the recomputation cost). The test suite pins both behaviors explicitly,
+including a --verify-hashes run over the worked example so a future
+hash-scope change fails loudly instead of silently. The flag is a no-op for
+packets and for --canonicalize runs.
 """
 
 from __future__ import annotations
 
 import argparse
 import datetime as _dt
+import hashlib
 import io
 import json
 import os
@@ -208,6 +224,23 @@ def check_iso_z(v, field, findings):
         except ValueError:
             findings.append(E("ERR:SYN", field, "unparseable timestamp: %r" % (v,)))
             return None
+
+
+def canonical_body_bytes(obj):
+    """Bytes over which an object content hash is computed.
+
+    The documented rule (AUDIT/protean-sym2p/provenance.md): sha256 over the
+    canonical compact ``body`` with sorted keys. Sorted keys are used because
+    objects carry no mandated key order (unlike packets, which have a fixed
+    canonical order).
+    """
+    return json.dumps(obj["body"], sort_keys=True, separators=(",", ":"),
+                      ensure_ascii=False).encode("utf-8")
+
+
+def object_hash(obj):
+    """The ``sha256:<hex>`` value ``--verify-hashes`` expects."""
+    return "sha256:" + hashlib.sha256(canonical_body_bytes(obj)).hexdigest()
 
 
 def check_ops(v, findings):
@@ -449,6 +482,14 @@ def validate_object(obj, findings):
         findings.append(E("ERR:SYN", "v", "object version must be an integer >= 1"))
     if not isinstance(obj.get("hash"), str) or not HASH_RE.match(obj.get("hash", "")):
         findings.append(E("ERR:SYN", "hash", "must be 'sha256:<64 hex>' (canonical content hash)"))
+    elif VERIFY_HASHES and isinstance(obj.get("body"), dict):
+        recomputed = object_hash(obj)
+        if recomputed != obj["hash"]:
+            findings.append(E("ERR:SYN", "hash",
+                              "content hash mismatch: declared %s but canonical body "
+                              "hashes to %s (canonical form: compact JSON body, sorted "
+                              "keys, UTF-8)"
+                              % (obj["hash"][:23], recomputed[:23])))
     if obj.get("ttl") not in TTL_CLASSES:
         findings.append(E("ERR:SYN", "ttl", "unknown retention class %r (allowed: %s)"
                           % (obj.get("ttl"), ", ".join(TTL_CLASSES))))
@@ -681,6 +722,7 @@ def _noncanonical(line):
 
 _CURRENT_NOW = None
 STRICT_CANONICAL = False
+VERIFY_HASHES = False
 
 
 def validate_document(locator, text, findings, warnings, run_state, state,
@@ -715,7 +757,7 @@ def validate_document(locator, text, findings, warnings, run_state, state,
 
 
 def main(argv=None):
-    global _CURRENT_NOW, STRICT_CANONICAL
+    global _CURRENT_NOW, STRICT_CANONICAL, VERIFY_HASHES
     parser = argparse.ArgumentParser(
         prog="sym-validate.py",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -729,6 +771,7 @@ def main(argv=None):
             "  sym-validate.py --kind packet examples/protean-sym2p/review-fix-verify-merge.jsonl\n"
             "  sym-validate.py --state state.json --require-refs packets.jsonl\n"
             "  sym-validate.py --now 2026-09-17T00:00:00Z --strict-canonical packets.jsonl\n"
+            "  sym-validate.py --verify-hashes --kind object objects.jsonl\n"
             "  sym-validate.py --canonicalize packets.jsonl\n"
         ),
     )
@@ -748,6 +791,11 @@ def main(argv=None):
     parser.add_argument("--strict-canonical", action="store_true",
                         help="require compact canonical serialization (no insignificant "
                              "whitespace)")
+    parser.add_argument("--verify-hashes", action="store_true",
+                        help="for objects: recompute the sha256 body hash and reject "
+                             "on mismatch (opt-in; enforces the documented body-hash "
+                             "rule, see module docstring; no-op for packets and "
+                             "--canonicalize runs)")
     parser.add_argument("--canonicalize", action="store_true",
                         help="print the canonical compact form of each document and exit")
     parser.add_argument("--json", action="store_true", dest="as_json",
@@ -763,6 +811,7 @@ def main(argv=None):
             sys.stderr.write("--now: %s\n" % probe[0]["msg"])
             return 2
     STRICT_CANONICAL = args.strict_canonical
+    VERIFY_HASHES = args.verify_hashes
 
     if not args.files:
         parser.print_help(sys.stderr)
