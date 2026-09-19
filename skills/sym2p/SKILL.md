@@ -28,6 +28,7 @@ does not already state.
     python3 scripts/protean-sym2p/sym-validate.py --now 2026-09-17T03:00:00Z packet.json
     python3 scripts/protean-sym2p/sym-validate.py --strict-canonical packets.jsonl
     python3 scripts/protean-sym2p/sym-validate.py --canonicalize packets.jsonl
+    python3 scripts/protean-sym2p/sym-validate.py --verify-hashes --kind object objects.jsonl
     python3 tests/run-tests.py                              # focused suite
 
 Exit codes: `0` every document valid · `1` at least one invalid (typed
@@ -90,6 +91,20 @@ partially applies, and never falls back to a lenient interpretation.
 | `--require-refs` and an `ev`/`ce`/`s` ref is unknown | `ERR:REF` |
 | multi-recipient `t` | `ERR:POL` |
 | duplicate `(f,id)` in this run | `ERR:DUP` |
+| object body hash mismatch (with `--verify-hashes`) | `ERR:SYN` on `hash` |
+
+### Hash verification (opt-in)
+
+`hash` was previously format-checked only. With `--verify-hashes`, the
+validator recomputes the hash and fails closed on mismatch, enforcing the
+documented rule (AUDIT/protean-sym2p/provenance.md): sha256 over the canonical
+compact `body` with sorted keys. Header fields (`v`, `by`, `at`, `ttl`,
+`acl`, `sup`, `deps`) sit outside the hash by design. The flag is opt-in —
+enforcing content-hash integrity is a receiver-side policy choice — and is a
+no-op for packets and `--canonicalize` runs. The test suite pins both
+behaviors (mismatch rejected with the flag, format-only without it), including
+a `--verify-hashes` run over the worked example so a future hash-scope change
+fails loudly instead of silently.
 
 ### About `ERR:DUP`
 
