@@ -29,6 +29,7 @@ does not already state.
     python3 scripts/protean-sym2p/sym-validate.py --strict-canonical packets.jsonl
     python3 scripts/protean-sym2p/sym-validate.py --canonicalize packets.jsonl
     python3 scripts/protean-sym2p/sym-validate.py --verify-hashes --kind object objects.jsonl
+    python3 scripts/protean-sym2p/sym-publish.py --root <delegation-dir> --by <role-id> draft.json
     python3 tests/run-tests.py                              # focused suite
 
 Exit codes: `0` every document valid · `1` at least one invalid (typed
@@ -132,9 +133,74 @@ The validator contains no merge path, so none can be invoked accidentally.
 by the act-conditional checks above. Dropping a P-class field for compression is
 a defect, not an optimization — encode it, do not delete it.
 
+## Publishing objects (the append-only write path)
+
+`sym-publish.py` is the producer half of the object contract. M-5 requires
+object writes to be append-only versions and the tooling to refuse to rewrite a
+published file (L-14); the validator checks shape on the read path, and this is
+the write path.
+
+    python3 scripts/protean-sym2p/sym-publish.py --root <delegation-dir> --by <role-id> draft.json
+    python3 scripts/protean-sym2p/sym-publish.py --root <dir> --by cos --announce --to relay draft.json
+    cat draft.json | python3 scripts/protean-sym2p/sym-publish.py --root <dir> --by cos -
+    python3 scripts/protean-sym2p/sym-publish.py --root <dir> --by cos --dry-run draft.json
+    python3 scripts/protean-sym2p/sym-validate.py --verify-hashes --kind object <dir>/objects/<id>.v2.md
+
+Exit codes match the validator: `0` published or an idempotent no-op, `1`
+refused with a typed diagnostic, `2` usage or IO error. Typed codes: `ERR:SYN`
+(input not canonical, not well-formed, or an unverifiable declared hash),
+`ERR:VER` (version or lineage conflict, including a refusal to rewrite),
+`ERR:AUTH` (the declared author is not the publishing identity).
+
+- **Input is a hash-less object.** `id`, `type`, `tk`, `prj`, `ttl`, `body`, and
+  the per-type surface are the caller's. `v`, `sup`, `hash`, `by`, `at` are
+  assigned at publish time; supplying one is accepted only when it agrees with
+  what the publisher resolved, and a disagreement is a typed refusal.
+- **Version resolution is read from the filesystem**, never from the input:
+  `<id>.md` is version 1 and revisions are `<id>.v<N>.md`, so a repeat publish of
+  unchanged content is an idempotent no-op (L-11) and changed content appends
+  exactly one version. A version-chain hole, two files claiming one version, or a
+  published tip that does not parse is refused rather than appended to.
+- **The refusal is a real one.** The file is created with `O_CREAT|O_EXCL`, so an
+  existing published file cannot be overwritten even by a concurrent writer;
+  `--version N` lets a caller pin the target, and a version already published
+  with different content is refused.
+- **The content hash is the one `--verify-hashes` recomputes** — sha256 over the
+  canonical compact `body`, sorted keys, UTF-8, the documented rule. A declared
+  hash is verified against the document as given and never silently recomputed,
+  and because the hash covers the body, a caller-computed correct hash survives
+  publication unchanged. Header fields (`v`, `by`, `at`, `ttl`, `acl`, `sup`,
+  `deps`) sit outside the hash by design, so the publisher's own `v`, `sup`, and
+  `by` checks are what protect the header at write time; run
+  `--verify-hashes` on the published file for the body.
+- **`--dry-run` writes nothing, including the store.** It prints the resolved
+  ref, target, and hash and creates no `<root>/objects/` directory, so it is safe
+  on a root that has never published anything — which is the check it exists
+  for. An absent store reads as empty; a store that exists but cannot be listed
+  is still a refusal.
+- **Output is canonical compact JSON, key-sorted** — the publisher normalizes
+  whatever the caller emits, which is where canonicalize-before-send belongs:
+  `--strict-canonical` stops being a trap for nondeterministic emitters.
+- **`sup` is emitted as a legal REF.** SPEC.md section 4 rule 2 writes the
+  predecessor as `<id>.v<N-1>`, but L-5 locks `REF := ID [":v" VERSION]` and
+  forbids dotted ids, so the publisher emits `<id>` for version 2 and
+  `<id>:v<N-1>` thereafter — the form the validator accepts. The section 4
+  shorthand is a normative-doc question, not an implemented rule.
+- **`--announce` emits the packet naming the new ref** (`a:"assert"`,
+  `s` = the new versioned ref, `base` = the predecessor for a revision,
+  `rq:"rev"`), in canonical key order so it validates as a packet. `update` is
+  not used: it is a receiver-side mutation and requires `ops`. Routing-state rows
+  (M-9) stay out of scope; the caller routes the announce.
+
+The publisher enforces the header block and the write path, not the validator's
+per-type checks. Run `sym-validate.py --verify-hashes --kind object` on the
+published file for the full contract; the suite does exactly that for every case.
+
 ## Files
 
 - `scripts/protean-sym2p/sym-validate.py` — the validator (stdlib only, Python 3.8+).
+- `scripts/protean-sym2p/sym-publish.py` — the write-once object publisher
+  (stdlib only, Python 3.8+).
 - `templates/protean-sym2p/brief-packet.json` — canonical `assign` brief packet.
 - `templates/protean-sym2p/receipt-packet.json` — canonical `done` receipt packet.
 - `examples/protean-sym2p/review-fix-verify-merge.jsonl` — worked
@@ -143,9 +209,11 @@ a defect, not an optimization — encode it, do not delete it.
   corrected delta, verification, a challenge plus dispute object, the authorized
   merge execution, and the closing `done` with a decision object holding the
   English user-facing summary.
-- `tests/run-tests.py` and `tests/fixtures/**` — focused suite: valid fixtures
-  pass, and malformed / stale / duplicate / protected-semantic fixtures fail
-  with typed diagnostics.
+- `tests/run-tests.py` and `tests/fixtures/**` — focused suite in two sections:
+  validator cases (valid fixtures pass, malformed / stale / duplicate /
+  protected-semantic fixtures fail with typed diagnostics) and publisher cases
+  (append-only versioning, `sup` chain, overwrite refusal, idempotent no-op,
+  and every published file re-validated with `--verify-hashes`).
 
 Templates are pretty-printed for humans and stay valid JSON. The wire form is
 compact: run `--canonicalize` to normalize a document before writing it as a
