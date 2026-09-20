@@ -1,0 +1,112 @@
+[
+  {
+    "id": "S1",
+    "topic": "Append-only log / Certificate Transparency v1",
+    "title": "RFC 6962: Certificate Transparency (Experimental)",
+    "publisher": "IETF",
+    "url": "https://www.rfc-editor.org/info/rfc6962/",
+    "http_status": 200,
+    "verified_at": "2026-09-20",
+    "type": "IETF RFC (Experimental)",
+    "relevance": "Defines append-only Merkle Tree logs, SCTs, STHs, inclusion and consistency proofs — underpins ciphertext-hash provenance logging for SYM-2P."
+  },
+  {
+    "id": "S2",
+    "topic": "Append-only log / Certificate Transparency v2",
+    "title": "RFC 9162: Certificate Transparency Version 2.0 (obsoletes 6962)",
+    "publisher": "IETF",
+    "url": "https://www.rfc-editor.org/info/rfc9162/",
+    "http_status": 200,
+    "verified_at": "2026-09-20",
+    "type": "IETF RFC (Proposed Standard)",
+    "relevance": "Successor to RFC 6962; adds algorithm agility and explicit gossip requirements — informs the witness/monitor model for SYM-2P provenance."
+  },
+  {
+    "id": "S3",
+    "topic": "Cryptographic transparency / Transparency log",
+    "title": "Sigstore Rekor — Software Supply Chain Transparency Log",
+    "publisher": "Sigstore / OpenSSF (GitHub)",
+    "url": "https://github.com/sigstore/rekor",
+    "http_status": 200,
+    "verified_at": "2026-09-20",
+    "type": "Official open-source transparency log",
+    "relevance": "Production transparency log; Fulcio-style OIDC-bound ephemeral certs inform SYM-2P human identity model."
+  },
+  {
+    "id": "S4",
+    "topic": "E2EE messaging",
+    "title": "RFC 9420: The Messaging Layer Security (MLS) Protocol",
+    "publisher": "IETF",
+    "url": "https://www.rfc-editor.org/info/rfc9420/",
+    "http_status": 200,
+    "verified_at": "2026-09-20",
+    "type": "IETF RFC (Proposed Standard)",
+    "relevance": "Only IETF standard for E2EE group messaging (TreeKEM, forward secrecy, post-compromise security); candidate wire protocol for SYM-2P Stage 2."
+  },
+  {
+    "id": "S5",
+    "topic": "Selective disclosure",
+    "title": "RFC 9901: Selective Disclosure for JSON Web Tokens (SD-JWT)",
+    "publisher": "IETF",
+    "url": "https://www.rfc-editor.org/info/rfc9901/",
+    "http_status": 200,
+    "verified_at": "2026-09-20",
+    "type": "IETF RFC",
+    "relevance": "Final standard for hash-based selective disclosure of JWT claims with Holder Binding — mandatory mechanism for SYM-2P credential layer."
+  },
+  {
+    "id": "S7",
+    "topic": "Verifiable Credentials / Identity",
+    "title": "W3C Verifiable Credentials Data Model 2.0",
+    "publisher": "W3C",
+    "url": "https://www.w3.org/TR/vc-data-model-2.0/",
+    "http_status": 200,
+    "verified_at": "2026-09-20",
+    "type": "W3C Recommendation Track",
+    "relevance": "Data model for credentials that SD-JWT VCs carry; anchors the selective disclosure + identity layer for SYM-2P."
+  },
+  {
+    "id": "S8",
+    "topic": "Identity / Key management (DIDs)",
+    "title": "W3C Decentralized Identifiers (DIDs) v1.0",
+    "publisher": "W3C",
+    "url": "https://www.w3.org/TR/did/",
+    "http_status": 200,
+    "verified_at": "2026-09-20",
+    "type": "W3C Recommendation",
+    "relevance": "did:web / did:key identifiers and DID Documents for self-sovereign agent identity — primary identity mechanism for SYM-2P agents."
+  },
+  {
+    "id": "S9",
+    "topic": "Identity / OIDC Discovery",
+    "title": "OpenID Connect Discovery 1.0",
+    "publisher": "OpenID Foundation",
+    "url": "https://openid.net/specs/openid-connect-discovery-1_0.html",
+    "http_status": 200,
+    "verified_at": "2026-09-20",
+    "type": "OpenID Standard",
+    "relevance": "Federated identity and JWKS discovery; underpins Fulcio-style ephemeral certs for human operators bridging to SYM-2P."
+  },
+  {
+    "id": "S10",
+    "topic": "Inter-software communication (event envelope)",
+    "title": "CloudEvents v1.0",
+    "publisher": "CNCF",
+    "url": "https://cloudevents.io/",
+    "http_status": 200,
+    "verified_at": "2026-09-20",
+    "type": "CNCF Standard",
+    "relevance": "Standard envelope for SYM-2P events (specversion, type, source, id, time, data) — the mandatory outer envelope for all SYM-2P provenance events."
+  },
+  {
+    "id": "S11",
+    "topic": "Inter-software communication (federation)",
+    "title": "W3C ActivityPub Recommendation",
+    "publisher": "W3C",
+    "url": "https://www.w3.org/TR/activitypub/",
+    "http_status": 200,
+    "verified_at": "2026-09-20",
+    "type": "W3C Recommendation",
+    "relevance": "Actor-model federation (outbox/inbox) — candidate if SYM-2P needs cross-org follow/subscribe in a future extension."
+  }
+]
