@@ -25,7 +25,7 @@ This proposal reworks the SYM-2P protocol to integrate with the Public Verifiabl
 
 **FACT:** RFC 9420 (MLS, Proposed Standard, July 2023) provides forward secrecy, post-compromise security, and scalable group key agreement via TreeKEM for E2EE group messaging. [S4]
 
-**FACT:** W3C DIDs v1.0 (Recommendation) defines URIs that resolve to key-bearing documents without a central registry. `did:web` can be hosted on static Pages at `/.well-known/did.json`. [S8]
+**FACT:** W3C DIDs v1.0 (Recommendation) defines DID URIs and DID Documents. The `did:web` path mapping comes from the did:web method specification: `did:web:example.org` resolves at `/.well-known/did.json`, while a path identifier resolves under the corresponding URL path. [S8] [S13]
 
 **FACT:** CloudEvents v1.0 (CNCF) is a standardized event envelope with bindings for HTTP, Kafka, etc. [S10]
 
