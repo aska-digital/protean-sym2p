@@ -18,8 +18,8 @@
     "url": "https://www.rfc-editor.org/info/rfc9162/",
     "http_status": 200,
     "verified_at": "2026-09-20",
-    "type": "IETF RFC (Proposed Standard)",
-    "relevance": "Successor to RFC 6962; adds algorithm agility and explicit gossip requirements — informs the witness/monitor model for SYM-2P provenance."
+    "type": "IETF RFC (Experimental)",
+    "relevance": "Successor to RFC 6962; adds algorithm agility and explicit gossip requirements - informs the witness/monitor model for SYM-2P provenance."
   },
   {
     "id": "S3",
@@ -51,8 +51,8 @@
     "url": "https://www.rfc-editor.org/info/rfc9901/",
     "http_status": 200,
     "verified_at": "2026-09-20",
-    "type": "IETF RFC",
-    "relevance": "Final standard for hash-based selective disclosure of JWT claims with Holder Binding — mandatory mechanism for SYM-2P credential layer."
+    "type": "IETF RFC (Proposed Standard)",
+    "relevance": "Proposed Standard for hash-based selective disclosure of JWT claims with Holder Binding; used as the SD-JWT mechanism while the SD-JWT VC profile remains a separate Internet-Draft."
   },
   {
     "id": "S7",
@@ -97,6 +97,17 @@
     "verified_at": "2026-09-20",
     "type": "CNCF Standard",
     "relevance": "Standard envelope for SYM-2P events (specversion, type, source, id, time, data) — the mandatory outer envelope for all SYM-2P provenance events."
+  },
+  {
+    "id": "S12",
+    "topic": "SD-JWT-based Verifiable Credentials",
+    "title": "draft-ietf-oauth-sd-jwt-vc-19: SD-JWT-based Verifiable Digital Credentials",
+    "publisher": "IETF OAuth Working Group",
+    "url": "https://datatracker.ietf.org/doc/draft-ietf-oauth-sd-jwt-vc/",
+    "http_status": 200,
+    "verified_at": "2026-09-22",
+    "type": "Active Internet-Draft (intended Proposed Standard)",
+    "relevance": "Defines the SD-JWT VC profile separately from RFC 9901; implementation must track its draft status until publication."
   },
   {
     "id": "S11",
