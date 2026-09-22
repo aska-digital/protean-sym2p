@@ -1,7 +1,7 @@
 # Protean Hub Council — SYM-2P Rework Proposal
 
 **Proposal date:** 2026-09-20 (UTC)
-**Author:** Protean Hub Council (Hazen research, Leo architecture, Frida UX/visuals, Mozi build)
+**Author:** Protean Hub Council
 **Status:** PROPOSAL — UNMERGED. Owner review required.
 
 ---
@@ -21,7 +21,7 @@ Claims carry exactly one tag:
 
 This proposal reworks the SYM-2P protocol to integrate with the Public Verifiable Provenance Hub (Workstream A) while improving its own E2EE, identity, and selective-disclosure layers. The key change: SYM-2P events gain a CloudEvents outer envelope, the existing wire packet (`v: 2`, canonical key order, act-conditional fields) remains intact inside, and a narrow contract ensures the hub logs only hashes and signatures — never plaintext.
 
-**FACT:** RFC 9901 — *Selective Disclosure for JWTs (SD-JWT)* — is the finalized IETF standard (2025) for hash-based selective disclosure of JWT claims with Holder Binding. [S5]
+**FACT:** RFC 9901 — *Selective Disclosure for JSON Web Tokens (SD-JWT)* — defines hash-based selective disclosure and optional holder binding. The RFC Editor labels it an IETF Proposed Standard. [S5]
 
 **FACT:** RFC 9420 (MLS, Proposed Standard, July 2023) is the only IETF standard for E2EE group messaging. It provides forward secrecy, post-compromise security, and scalable group key agreement via TreeKEM. [S4]
 
@@ -69,7 +69,7 @@ This proposal reworks the SYM-2P protocol to integrate with the Public Verifiabl
 }
 ```
 
-SYM-2P kinds map to `com.protean.sym2p.<kind>.v1` type values. For confidential packets, the `data` field carries the ciphertext (see SS4).
+SYM-2P kinds map to `com.protean.sym2p.<kind>.v1` type values. For confidential packets, the `data` representation and `datacontenttype` must be fixed together in the conformance schema. A JSON event MUST NOT label an encoded ciphertext as `application/vnd.protean.sym2p.v2+json` unless the bytes are actually that media type; the binary binding or an explicit base64 representation must be selected before implementation.
 
 FACT [S10]: CloudEvents defines `specversion, type, source, id, time, data` and extension attributes — `hub_contract` and `datacontenttype` are extensions specific to this protocol.
 
@@ -77,28 +77,26 @@ FACT [S10]: CloudEvents defines `specversion, type, source, id, time, data` and 
 The existing SYM-2P/1.0 packet (wire `v: 2`, canonical key order, act-conditional fields — the locked surface in the validator) is unchanged. It rides inside the CloudEvents `data` field. The rework adds payloads *around* the packet, never inside the envelope grammar. Existing validators continue to work on the inner packet.
 
 ### Version negotiation
-Contract version is negotiated via the `hub_contract` field in CloudEvents extension attributes. A receiver rejects unknown major versions (fail-closed philosophy, identical to the current SYM-2P validator). Current version: `1.0`.
+Contract version is negotiated via the `hub_contract` field in CloudEvents extension attributes. CloudEvents intermediaries may ignore extension attributes, so this is a SYM-2P contract rule, not a CloudEvents guarantee: a SYM-2P-aware receiver MUST reject an unknown major version and MUST NOT route or persist the event as verified.
 
 ---
 
-## 4. E2EE: 1:1 sealed-box first, MLS gated
+## 4. E2EE: Noise IK for 1:1, MLS gated
 
-**RECOMMENDATION (resolves B-decision 1):** Two-stage gate.
+**RECOMMENDATION (resolves B-decision 1):** Use Noise IK for interactive 1:1 channels. Treat libsodium sealed boxes as a separate one-way envelope primitive, not as an equivalent channel protocol. Sealed boxes provide recipient confidentiality but do not authenticate the sender; sender authenticity comes from the existing packet signature or a separate signature over the ciphertext.
 
 ### Stage 1 — 1:1 and small-n confidential pipes (ship first)
-- **Cryptography:** libsodium sealed boxes (Curve25519-XSalsa20-Poly1305) / Noise IK over the existing SYM-2P identity layer.
-- **Properties:** sender-authenticated encryption, ephemeral key exchange, no custom ratchet.
+- **Cryptography:** Noise IK for interactive 1:1 channels, using the DID-bound static keys and ephemeral handshake keys. Use libsodium sealed boxes only for one-way recipient-encrypted envelopes.
+- **Properties:** authenticated key establishment for the intended peer, forward secrecy from the ephemeral handshake keys, and no custom ratchet. Sender authentication is supplied by the Noise handshake or an explicit packet signature; it is not a property of a sealed box.
 - **No Delivery Service dependency.** Direct peer-to-peer encryption using DIDs as key discovery.
 - **Ciphertext provenance:** For any E2EE message that must be provable later, the sender submits `SHA-256(ciphertext)` + DSSE signature to the hub log at send time. The plaintext never exists outside the channel; the proof exists regardless of whether any recipient ever discloses.
-- FACT [S4] counterevidence: MLS is heavyweight with Delivery Service trust assumptions and epoch synchronization complexity. For 1:1 use, libsodium sealed boxes are simpler and more audited.
+- FACT [S4] counterevidence: MLS is heavyweight for small deployments and introduces group epoch and Delivery Service coordination. Noise IK is the selected Stage-1 channel handshake; MLS remains gated for groups.
 
 ### Stage 2 — MLS (gated on measured need)
 - **Adoption condition:** A named consumer with >=3 parties AND a confidentiality requirement.
 - **Protocol:** RFC 9420 MLS, TreeKEM, forward secrecy, post-compromise security.
 - **Hub integration unchanged:** CloudEvents envelope rides inside MLS `message/mls` application messages; ciphertext hash is logged at send time regardless of transport.
 - **RECOMMENDATION:** Do not invent a custom ratchet under any stage.
-
-**ASSUMPTION:** SYM-2P vNext's immediate need is confidential 1:1 agent-to-agent pipes plus signed provenance events — not group E2EE. If the Council contradicts this, Stage 2 activates and the phase plan shifts by roughly one milestone.
 
 **OPEN — Confidential-channel consumer list.** The Stage-2 MLS gate fires on measured need; the Council should name the candidate consumers now so K3 has a concrete test.
 
@@ -124,7 +122,7 @@ Contract version is negotiated via the `hub_contract` field in CloudEvents exten
 OIDC identity (GitHub/Google) with ephemeral signing certs, Fulcio-style. FACT [S3][S9]: this is the production-proven path — no key custody for humans, natural fit with the GitHub-centric stack.
 
 ### Agents / services
-`did:web`, DID Documents hosted at `https://<org>.github.io/.well-known/did.json`, with one hardening: **the DID Document's key list is registered in the transparency log at creation, and every subsequent change is a log record.** Verifiers that saw a DID before can detect a Pages-side DID swap because the log history contradicts the new document. First-use trust is TOFU + log registration.
+`did:web` resolution follows the DID method's path mapping. For example, `did:web:example.org` resolves at `https://example.org/.well-known/did.json`, while `did:web:example.org:agent:alice` resolves at `https://example.org/agent/alice/did.json`. A GitHub Pages deployment can host either form, but the proposal must select one exact identifier shape before implementation.
 
 ### Bridge
 SD-JWT VC when an agent must present a derived credential with selective disclosure.
@@ -197,9 +195,9 @@ This workstream runs parallel to the hub's Workstream A, decoupled after P0 cont
 
 ## 11. Unresolved decisions (open for owner + Sparky feedback)
 
-1. **OPEN — E2EE Stage 1 algorithm:** sealed-box vs. Noise IK. Both cover the same threat model. Selection criteria: library maturity, audit status, key encoding in DIDs.
+1. **RESOLVED — E2EE Stage 1 algorithm:** Noise IK is selected for interactive 1:1 channels. Sealed boxes remain a one-way envelope primitive and do not provide sender authentication.
 2. **OPEN — SD-JWT claim registry.** The exact VC context URI and claim type namespace for SYM-2P credentials.
-3. **OPEN — DID method choice for ephemeral agents.** `did:key` vs. `did:web` for agents that don't need a static document.
+3. **OPEN — DID document shape for ephemeral agents.** The proposal must choose one exact `did:web` identifier mapping, or explicitly adopt `did:key` for agents without hosted documents.
 4. **OPEN — Cold recovery key custody.** Who holds the offline key for agent DID recovery.
 5. **OPEN — Confidential-channel consumer list.** Which consumers need >2-party E2EE.
 6. **OPEN — Conformance test ownership.** Who authors and maintains the SYM-2P rework conformance suite.
