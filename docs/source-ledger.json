@@ -62,7 +62,7 @@
     "url": "https://www.w3.org/TR/vc-data-model-2.0/",
     "http_status": 200,
     "verified_at": "2026-09-20",
-    "type": "W3C Recommendation Track",
+    "type": "W3C Recommendation",
     "relevance": "Data model for credentials that SD-JWT VCs carry; anchors the selective disclosure + identity layer for SYM-2P."
   },
   {
@@ -74,7 +74,18 @@
     "http_status": 200,
     "verified_at": "2026-09-20",
     "type": "W3C Recommendation",
-    "relevance": "did:web / did:key identifiers and DID Documents for self-sovereign agent identity — primary identity mechanism for SYM-2P agents."
+    "relevance": "W3C DID Core defines DID URIs and DID Documents; it does not define did:web method path resolution."
+  },
+  {
+    "id": "S13",
+    "topic": "Identity / did:web method resolution",
+    "title": "did:web Method Specification",
+    "publisher": "W3C Credentials Community Group",
+    "url": "https://w3c-ccg.github.io/did-method-web/",
+    "http_status": 200,
+    "verified_at": "2026-09-22",
+    "type": "Unofficial Draft",
+    "relevance": "Defines the did:web method path mapping used by the proposal; it has no official standards status."
   },
   {
     "id": "S9",
