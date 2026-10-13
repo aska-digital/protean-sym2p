@@ -349,6 +349,31 @@ def read_object(path, findings):
     return parse_strict(text.strip(), findings)
 
 
+def check_stored_tip(obj, obj_id, version, findings):
+    """Validate stored integrity before trusting a fingerprint or lineage.
+
+    Reuse the publisher's input/header and canonical body-hash checks without
+    treating the current publishing role as the author of an older object.
+    This checks local consistency, not authenticity of stored header fields.
+    """
+    check_input(obj, findings, obj.get("by"))
+    for req in OBJECT_REQUIRED:
+        if req not in obj:
+            findings.append(E("ERR:SYN", req, "required stored object metadata missing"))
+    if not (isinstance(obj.get("by"), str) and ID_RE.match(obj["by"])):
+        findings.append(E("ERR:SYN", "by", "stored author must be an ID"))
+    if obj.get("id") != obj_id:
+        findings.append(E("ERR:VER", "id", "stored identity does not match the filename"))
+    if not is_int(obj.get("v")) or obj["v"] != version:
+        findings.append(E("ERR:VER", "v", "stored version does not match the filename"))
+    wanted = sup_for(obj_id, version) or []
+    actual = obj.get("sup", [])
+    # A bare ref and an explicit :v1 ref both name version 1 (SPEC rule 4).
+    if actual != wanted and not (version == 2 and actual == [obj_id + ":v1"]):
+        findings.append(E("ERR:VER", "sup",
+                          "stored supersedes refs do not match the predecessor %r" % wanted))
+
+
 def write_once(path, payload, findings):
     """Create ``path`` and fail closed if it already exists (never rewrite)."""
     flags = os.O_CREAT | os.O_EXCL | os.O_WRONLY | int(getattr(os, "O_BINARY", 0))
@@ -539,6 +564,9 @@ def main(argv=None):
                 findings.append(E("ERR:VER", tip_path,
                                   "published tip is unreadable; refusing to append "
                                   "to an unverified lineage"))
+            return emit(findings, args.as_json)
+        check_stored_tip(tip_obj, obj_id, tip_version, findings)
+        if findings:
             return emit(findings, args.as_json)
 
     if tip_obj is not None and fingerprint(tip_obj) == fingerprint(obj):
